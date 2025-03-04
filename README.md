@@ -4,12 +4,6 @@ Overview
 
 Travel Diary is a web application that allows users to document their travel experiences, store memories, and share them with others. The project consists of a backend, frontend, and the main application structure.
 
-Project Structure
-
-Travel_Diary/
-├── backend/          # Server-side application
-├── frontend/         # Client-side application
-├── travel-diary-app/ # Main application logic
 
 Features
 

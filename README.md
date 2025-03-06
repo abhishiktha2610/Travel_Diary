@@ -17,3 +17,5 @@ View past travel experiences in an interactive timeline
 
 Responsive design for mobile and desktop
 
+![image](https://github.com/user-attachments/assets/4f6443a4-0732-4a4c-a8ae-d9b497da4538)
+

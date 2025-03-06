@@ -17,7 +17,10 @@ const { error } = require("console");
 dotenv.config();
 
 const app = express();
-mongoose.connect(config.connectionString);
+mongoose.connect(config.connectionString)
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((error) => console.error("MongoDB connection error:", error));
+
 
 // Middleware
 app.use(express.json()); // To parse incoming JSON requests
@@ -116,7 +119,7 @@ app.post('/add-travel-story', authenticateToken,async (req, res) => {
         return res.status(400).json({error: true,message: "All fields are required"}); 
     }
 
-    const parsedVisitedDate = new Date(pareInt(visitedDate));
+    const parsedVisitedDate = new Date(parseInt(visitedDate));
     try{
         const travelDiary = new TravelDiary({
             title,story,visitedDate,visitedLocation,userId,imageUrl,visitedDate:parsedVisitedDate,
@@ -126,7 +129,7 @@ app.post('/add-travel-story', authenticateToken,async (req, res) => {
         res.status(201).json({story:travelDiary, message: "Added Successfully"});
     }
     catch{
-        return res.sendStatus(400).json({error:true, message: error.message});
+        return res.status(400).json({ error: true, message: error.message });
     }
 });
 
@@ -203,7 +206,7 @@ app.put('/edit-story/:id', authenticateToken,async (req, res) => {
         res.status(200).json({story:travelDiary, message:"Update Successful" });
     }
     catch(error){
-        return res.sendStatus(400).json({error:true, message: error.message});
+        return res.status(400).json({ error: true, message: error.message });
     }
 
 });
@@ -254,8 +257,9 @@ app.put('/update-is-favourite/:id', authenticateToken,async (req, res) => {
 });
 
 app.post("/search",authenticateToken,async (req, res) => {
-    const {query} = res.query;
-    const {userId} = res.user;
+    const { query } = req.query;
+    const { userId } = req.user;
+    
 
     if(!query){
         return res.status(404).json({error:true, message: "query is required"});

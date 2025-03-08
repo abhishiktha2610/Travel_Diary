@@ -25,23 +25,19 @@ const Login = () => {
       return;
     }
 
-    setError(""); // Clear any previous errors
+    setError("");
 
     try {
-      console.log("Sending login request..."); // Confirm the request is sent
       const response = await axiosInstance.post("/login", {
         email: email,
         password: password,
       });
-
-      console.log("Login Response:", response); // Log the response to see if the API call is successful
 
       if (response.data && response.data.accessToken) {
         localStorage.setItem("token", response.data.accessToken);
         navigate("/dashboard");
       }
     } catch (error) {
-      console.error("Login request failed:", error);
       if (
         error.response &&
         error.response.data &&

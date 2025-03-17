@@ -1,44 +1,107 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MdClose, MdAdd, MdUpdate, MdDeleteOutline } from "react-icons/md";
 import DateSelector from "../../components/Input/DateSelector";
 import ImageSelector from "../../components/Input/ImageSelector";
+import {
+  GoogleMap,
+  useLoadScript,
+  Marker,
+  Autocomplete,
+} from "@react-google-maps/api";
 
+const libraries = ["places"];
+console.log("Google Maps API Key:", import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 const AddEditTravelStory = ({
   storyInfo,
   type,
   onClose,
   getAllTravelStories,
 }) => {
-  const [title, setTitle] = useState("");
-  const [visitedDate, setVisitedDate] = useState(null);
-  const [storyImg, setStoryImg] = useState(null);
-  const [description, setDescription] = useState("");
-  const [visitedLocation, setVisitedLocation] = useState([]);
+  const [title, setTitle] = useState(storyInfo?.title || "");
+  const [visitedDate, setVisitedDate] = useState(
+    storyInfo?.visitedDate || null
+  );
+  const [storyImg, setStoryImg] = useState(storyInfo?.storyImg || null);
+  const [description, setDescription] = useState(storyInfo?.description || "");
+  const [visitedLocation, setVisitedLocation] = useState(
+    storyInfo?.visitedLocation || ""
+  );
+  const [markerPosition, setMarkerPosition] = useState({
+    lat: storyInfo?.visitedLocation?.lat || 40.7128, // Default to NYC
+    lng: storyInfo?.visitedLocation?.lng || -74.006,
+  });
 
-  const handleAddorUpdateClick = () => {
-    const newStory = { title, description, visitedDate, storyImg };
+  const autocompleteRef = useRef(null);
+  const inputRef = useRef(null);
+  const mapRef = useRef(null);
+
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
+
+  useEffect(() => {
+    if (isLoaded && inputRef.current) {
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(
+        inputRef.current
+      );
+      autocompleteRef.current.addListener("place_changed", handlePlaceSelect);
+    }
+  }, [isLoaded]);
+
+  const handlePlaceSelect = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place && place.geometry) {
+        const location = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        };
+        setVisitedLocation(place.formatted_address);
+        setMarkerPosition(location);
+        if (mapRef.current) {
+          mapRef.current.panTo(location);
+        }
+      }
+    }
+  };
+
+  const handleAddorUpdateClick = async () => {
+    const newStory = {
+      title,
+      description,
+      visitedDate,
+      storyImg,
+      visitedLocation: {
+        ...markerPosition,
+        address: visitedLocation,
+      },
+    };
 
     if (type === "add") {
       console.log("Adding story:", newStory);
-      // Call API to add story
+      // TODO: Call API to add story
     } else {
       console.log("Updating story:", newStory);
-      // Call API to update story
+      // TODO: Call API to update story
     }
 
     getAllTravelStories(); // Refresh list
     onClose(); // Close modal
   };
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = async () => {
     if (window.confirm("Are you sure you want to delete this story?")) {
       console.log("Deleting story:", storyInfo);
-      // Call API to delete story
+      // TODO: Call API to delete story
       getAllTravelStories();
       onClose();
     }
   };
-  const handleDeleteStoryImg = async () => {};
+
+  const handleDeleteStoryImg = () => {
+    setStoryImg(null);
+  };
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md w-full max-w-lg">
@@ -51,6 +114,7 @@ const AddEditTravelStory = ({
         </button>
       </div>
 
+      {/* Title Input */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">Title</label>
         <input
@@ -62,10 +126,12 @@ const AddEditTravelStory = ({
         />
       </div>
 
+      {/* Date Selector */}
       <div className="mb-4">
         <DateSelector date={visitedDate} setDate={setVisitedDate} />
       </div>
 
+      {/* Image Selector */}
       <div className="mb-4">
         <ImageSelector
           image={storyImg}
@@ -74,6 +140,7 @@ const AddEditTravelStory = ({
         />
       </div>
 
+      {/* Description */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">
           Description
@@ -87,6 +154,32 @@ const AddEditTravelStory = ({
         />
       </div>
 
+      {/* Location Search & Map */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700">
+          Visited Location
+        </label>
+        <input
+          ref={inputRef}
+          type="text"
+          value={visitedLocation}
+          onChange={(e) => setVisitedLocation(e.target.value)}
+          placeholder="Enter a location"
+          className="mt-1 p-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        {isLoaded && (
+          <GoogleMap
+            mapContainerStyle={{ height: "300px", width: "100%" }}
+            center={markerPosition}
+            zoom={13}
+            onLoad={(map) => (mapRef.current = map)}
+          >
+            <Marker position={markerPosition} />
+          </GoogleMap>
+        )}
+      </div>
+
+      {/* Buttons */}
       <div className="flex items-center gap-2">
         {type === "add" ? (
           <button

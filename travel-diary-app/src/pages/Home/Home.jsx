@@ -8,14 +8,23 @@ import Modal from "react-modal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AddEditTravelStory from "./AddEditTravelStory";
+import ViewTravelStory from "./ViewTravelStory";
+import EmptyCard from "../../components/Cards/EmptyCard";
+import addStory from "../../assets/react.svg";
 
 const Home = () => {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState(null);
   const [allStories, setAllStories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilterType] = useState("");
   const [openAddEditModal, setOpenAddEditModal] = useState({
     isShown: false,
     type: "add",
+    data: null,
+  });
+  const [openViewModal, setOpenViewModal] = useState({
+    isShown: false,
     data: null,
   });
 
@@ -53,8 +62,12 @@ const Home = () => {
     }
   };
 
-  const handleEdit = (data) => {};
-  const handleViewStory = (data) => {};
+  const handleEdit = (data) => {
+    setOpenAddEditModal({ isShown: true, type: "edit", data: data });
+  };
+  const handleViewStory = (data) => {
+    setOpenViewModal({ isShown: true, data });
+  };
   const updateIsFavourite = async (storyData) => {
     const storyId = storyData._id;
     setAllStories((prevStories) =>
@@ -87,6 +100,35 @@ const Home = () => {
       );
     }
   };
+  const deleteTravelStory = async (data) => {
+    const storyId = data._id;
+    try {
+      const response = await axiosInstance.delete("/delete-story/" + storyId);
+      if (response.data && !response.data.error) {
+        toast.error("Story Deleted Successfully");
+        setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
+        getAllTravelStories();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const onSearchStory = async (query) => {
+    try {
+      const response = await axiosInstance.post(`/search?query=${query}`);
+      if (response.data && response.data.stories) {
+        setFilterType("search");
+        setAllStories(response.data.stories);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setFilterType("");
+    getAllTravelStories();
+  };
 
   useEffect(() => {
     console.log("Component mounted, calling APIs...");
@@ -96,7 +138,13 @@ const Home = () => {
 
   return (
     <div>
-      <Navbar userInfo={userInfo} />
+      <Navbar
+        userInfo={userInfo}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onSearchStory={onSearchStory}
+        handleClearSearch={handleClearSearch}
+      />
       <div className="container mx-auto py-10">
         <div className="flex gap-7">
           <div className="flex-1">
@@ -120,7 +168,10 @@ const Home = () => {
                 })}
               </div>
             ) : (
-              <>Empty Card here</>
+              <EmptyCard
+                imgSrc={addStory}
+                message='Start journaling your travel stories! click the "Add" button to get started!'
+              />
             )}
           </div>
           <div className="w-[320px]"></div>
@@ -148,6 +199,37 @@ const Home = () => {
             setOpenAddEditModal({ isShown: false, type: "add", data: null });
           }}
           getAllTravelStories={getAllTravelStories}
+        />
+      </Modal>
+      <Modal
+        isOpen={openViewModal.isShown}
+        onRequestClose={() =>
+          setOpenViewModal({ isShown: false, type: "edit", data: null })
+        }
+        style={{
+          overlay: {
+            backgroundColor: "rgba(0, 0, 0, 0.4)",
+            backdropFilter: "blur(5px)",
+            zIndex: 999,
+          },
+        }}
+        appElement={document.getElementById("root")}
+        className="model-box"
+      >
+        <ViewTravelStory
+          type={openViewModal.type}
+          storyInfo={openViewModal.data || null}
+          onClose={() => {
+            setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
+          }}
+          onUpdateClick={() => {
+            setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
+            handleEdit(openViewModal.data || null);
+          }}
+          OnDeleteClick={() => {
+            deleteTravelStory(openViewModal.data || null);
+            setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
+          }}
         />
       </Modal>
       <button

@@ -20,7 +20,7 @@ const ImageSelector = ({ image, setImage, handleDeleteImg }) => {
   };
 
   useEffect(() => {
-    if (typeof imag === "string") {
+    if (typeof image === "string") {
       setPreviewUrl(image);
     } else if (image) {
       setPreviewUrl(URL.createObjectURL(image));

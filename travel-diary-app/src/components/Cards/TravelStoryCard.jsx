@@ -12,6 +12,7 @@ const TravelStoryCard = ({
   isFavourite,
   onFavouriteClick,
   onClick,
+  onEdit,
 }) => {
   return (
     <div className="border rounded-lg overflow-hidden bg-white hover:shadow-lg hoiver:shadow-slate-200 transition-all ease-in-out relative cursor-pointer">

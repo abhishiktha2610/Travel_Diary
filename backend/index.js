@@ -300,6 +300,34 @@ app.post("/search", authenticateToken, async (req, res) => {
   }
 });
 
+app.get("/travel-stories/filter", authenticateToken, async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res
+      .status(400)
+      .json({
+        error: true,
+        message: "Both startDate and endDate are required",
+      });
+  }
+
+  try {
+    const travelDiaries = await TravelDiary.find({
+      userId: req.user.userId,
+      visitedDate: {
+        $gte: new Date(parseInt(startDate)), // Convert timestamp to Date object
+        $lte: new Date(parseInt(endDate)), // Convert timestamp to Date object
+      },
+    }).sort({ visitedDate: -1 }); // Sort by date in descending order
+
+    res.status(200).json({ stories: travelDiaries });
+  } catch (error) {
+    console.error("Error fetching filtered travel stories:", error);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/uploads", express.static(path.join(__dirname, "assets")));
 

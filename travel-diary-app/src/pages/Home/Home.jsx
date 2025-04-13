@@ -11,6 +11,8 @@ import AddEditTravelStory from "./AddEditTravelStory";
 import ViewTravelStory from "./ViewTravelStory";
 import EmptyCard from "../../components/Cards/EmptyCard";
 import addStory from "../../assets/react.svg";
+import { DayPicker } from "react-day-picker";
+import moment from "moment";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -18,24 +20,17 @@ const Home = () => {
   const [allStories, setAllStories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilterType] = useState("");
-  const [openAddEditModal, setOpenAddEditModal] = useState({
-    isShown: false,
-    type: "add",
-    data: null,
-  });
-  const [openViewModal, setOpenViewModal] = useState({
-    isShown: false,
-    data: null,
+  const [dateRange, setDateRange] = useState({ form: null, to: null });
+  const [modalState, setModalState] = useState({
+    openAddEditModal: { isShown: false, type: "add", data: null },
+    openViewModal: { isShown: false, data: null },
   });
 
   const getUserInfo = async () => {
     try {
       const response = await axiosInstance.get("/get-user");
-      console.log("Stories Response:", response.data);
       if (response.data && response.data.user) {
         setUserInfo(response.data.user);
-      } else {
-        console.log("User not found");
       }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -50,24 +45,51 @@ const Home = () => {
   const getAllTravelStories = async () => {
     try {
       const response = await axiosInstance.get("/get-all-stories");
-      console.log("Stories Response:", response.data);
-      console.log("User Info Response:", response.data);
       if (response.data && response.data.stories) {
         setAllStories(response.data.stories);
-      } else {
-        console.log("No stories found");
       }
     } catch (error) {
       console.error("Error fetching travel stories:", error);
     }
   };
 
+  const filterStoriesByDate = async (day) => {
+    try {
+      const startDate = day.from ? moment(day.from).valueOf() : null;
+      const endDate = day.to ? moment(day.to).valueOf() : null;
+      if (startDate && endDate) {
+        const response = await axiosInstance.get("/travel-stories/filter", {
+          params: { startDate, endDate },
+        });
+        if (response.data && response.data.stories) {
+          setFilterType("date");
+          setAllStories(response.data.stories);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching travel stories:", error);
+    }
+  };
+
+  const handleDayClick = (day) => {
+    setDateRange(day);
+    filterStoriesByDate(day);
+  };
+
   const handleEdit = (data) => {
-    setOpenAddEditModal({ isShown: true, type: "edit", data: data });
+    setModalState((prevState) => ({
+      ...prevState,
+      openAddEditModal: { isShown: true, type: "edit", data },
+    }));
   };
+
   const handleViewStory = (data) => {
-    setOpenViewModal({ isShown: true, data });
+    setModalState((prevState) => ({
+      ...prevState,
+      openViewModal: { isShown: true, data },
+    }));
   };
+
   const updateIsFavourite = async (storyData) => {
     const storyId = storyData._id;
     setAllStories((prevStories) =>
@@ -100,19 +122,24 @@ const Home = () => {
       );
     }
   };
+
   const deleteTravelStory = async (data) => {
     const storyId = data._id;
     try {
       const response = await axiosInstance.delete("/delete-story/" + storyId);
       if (response.data && !response.data.error) {
         toast.error("Story Deleted Successfully");
-        setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
+        setModalState((prevState) => ({
+          ...prevState,
+          openViewModal: { isShown: false, data: null },
+        }));
         getAllTravelStories();
       }
     } catch (error) {
       console.log(error);
     }
   };
+
   const onSearchStory = async (query) => {
     try {
       const response = await axiosInstance.post(`/search?query=${query}`);
@@ -131,7 +158,6 @@ const Home = () => {
   };
 
   useEffect(() => {
-    console.log("Component mounted, calling APIs...");
     getUserInfo();
     getAllTravelStories();
   }, []);
@@ -150,22 +176,20 @@ const Home = () => {
           <div className="flex-1">
             {allStories.length > 0 ? (
               <div className="grid grid-cols-2 gap-4">
-                {allStories.map((item) => {
-                  return (
-                    <TravelStoryCard
-                      key={item._id}
-                      imgUrl={item.imageUrl}
-                      title={item.title}
-                      story={item.story}
-                      date={item.visitedDate}
-                      visitedLocation={item.visitedLocation}
-                      isFavourite={item.isFavourite}
-                      onEdit={() => handleEdit(item)}
-                      onClick={() => handleViewStory(item)}
-                      onFavouriteClick={() => updateIsFavourite(item)}
-                    />
-                  );
-                })}
+                {allStories.map((item) => (
+                  <TravelStoryCard
+                    key={item._id}
+                    imgUrl={item.imageUrl}
+                    title={item.title}
+                    story={item.story}
+                    date={item.visitedDate}
+                    visitedLocation={item.visitedLocation}
+                    isFavourite={item.isFavourite}
+                    onEdit={() => handleEdit(item)}
+                    onClick={() => handleViewStory(item)}
+                    onFavouriteClick={() => updateIsFavourite(item)}
+                  />
+                ))}
               </div>
             ) : (
               <EmptyCard
@@ -177,65 +201,111 @@ const Home = () => {
           <div className="w-[320px]"></div>
         </div>
       </div>
-      <Modal
-        isOpen={openAddEditModal.isShown}
-        onRequestClose={() =>
-          setOpenAddEditModal({ isShown: false, type: "add", data: null })
-        }
-        style={{
-          overlay: {
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
-            backdropFilter: "blur(5px)",
-            zIndex: 999,
-          },
-        }}
-        appElement={document.getElementById("root")}
-        className="model-box"
-      >
-        <AddEditTravelStory
-          type={openAddEditModal.type}
-          storyInfo={openAddEditModal.data}
-          onClose={() => {
-            setOpenAddEditModal({ isShown: false, type: "add", data: null });
+      {/* Reusable Modal Component */}
+      {modalState.openAddEditModal.isShown && (
+        <Modal
+          isOpen={modalState.openAddEditModal.isShown}
+          onRequestClose={() => {
+            setModalState((prevState) => ({
+              ...prevState,
+              openAddEditModal: { isShown: false, type: "add", data: null },
+            }));
           }}
-          getAllTravelStories={getAllTravelStories}
-        />
-      </Modal>
-      <Modal
-        isOpen={openViewModal.isShown}
-        onRequestClose={() =>
-          setOpenViewModal({ isShown: false, type: "edit", data: null })
-        }
-        style={{
-          overlay: {
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
-            backdropFilter: "blur(5px)",
-            zIndex: 999,
-          },
-        }}
-        appElement={document.getElementById("root")}
-        className="model-box"
-      >
-        <ViewTravelStory
-          type={openViewModal.type}
-          storyInfo={openViewModal.data || null}
-          onClose={() => {
-            setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
+          style={{
+            overlay: {
+              backgroundColor: "rgba(0, 0, 0, 0.4)",
+              backdropFilter: "blur(5px)",
+              zIndex: 999,
+            },
           }}
-          onUpdateClick={() => {
-            setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
-            handleEdit(openViewModal.data || null);
+          appElement={document.getElementById("root")}
+          className="model-box"
+        >
+          <AddEditTravelStory
+            type={modalState.openAddEditModal.type}
+            storyInfo={modalState.openAddEditModal.data}
+            onClose={() => {
+              setModalState((prevState) => ({
+                ...prevState,
+                openAddEditModal: { isShown: false, type: "add", data: null },
+              }));
+            }}
+            getAllTravelStories={getAllTravelStories}
+          />
+        </Modal>
+      )}
+      <div className="container mx-auto py-10">
+        <div className="flex gap-7">
+          <div className="flex-1"></div>
+          <div className="w-[320px] ml-auto">
+            <div className="bg-white border border-slate-200 shadow-lg shadow-slate-200/60 rounded-lg">
+              <div className="p-3">
+                <DayPicker
+                  captionLayout="dropdown-buttons"
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={handleDayClick}
+                  pagedNavigation
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {modalState.openViewModal.isShown && (
+        <Modal
+          isOpen={modalState.openViewModal.isShown}
+          onRequestClose={() =>
+            setModalState((prevState) => ({
+              ...prevState,
+              openViewModal: { isShown: false, data: null },
+            }))
+          }
+          style={{
+            overlay: {
+              backgroundColor: "rgba(0, 0, 0, 0.4)",
+              backdropFilter: "blur(5px)",
+              zIndex: 999,
+            },
           }}
-          OnDeleteClick={() => {
-            deleteTravelStory(openViewModal.data || null);
-            setOpenViewModal((prevState) => ({ ...prevState, isShown: false }));
-          }}
-        />
-      </Modal>
+          appElement={document.getElementById("root")}
+          className="model-box"
+        >
+          <ViewTravelStory
+            type={modalState.openViewModal.type}
+            storyInfo={modalState.openViewModal.data || null}
+            onClose={() => {
+              setModalState((prevState) => ({
+                ...prevState,
+                openViewModal: { isShown: false },
+              }));
+            }}
+            onUpdateClick={() => {
+              setModalState((prevState) => ({
+                ...prevState,
+                openViewModal: { isShown: false },
+              }));
+              handleEdit(modalState.openViewModal.data);
+            }}
+            OnDeleteClick={() => {
+              deleteTravelStory(modalState.openViewModal.data || null);
+              setModalState((prevState) => ({
+                ...prevState,
+                openViewModal: { isShown: false },
+              }));
+            }}
+          />
+        </Modal>
+      )}
+
       <button
         className="w-16 h-16 flex items-center justify-center rounded-full bg-primary hover:bg-cyan-400 fixed right-10 bottom-10"
         onClick={() => {
-          setOpenAddEditModal({ isShown: true, type: "add", data: null });
+          setModalState((prevState) => ({
+            ...prevState,
+            openAddEditModal: { isShown: true, type: "add", data: null },
+          }));
         }}
       >
         <MdAdd className="text-[32px] text-white" />
